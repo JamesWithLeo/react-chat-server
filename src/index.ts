@@ -85,9 +85,43 @@ app.post("/signup", async(req:Request, res:Response)=> {
     const user = queryResponse.rows[0]
     console.log(user)
     res.status(200).json({ok:1, user})
+
   } catch (error) {
     console.log("Error during process:", error)
     res.status(500).json()
+  } finally {
+    if (client) client.release()
+  }
+})
+
+app.post("/setup", async(req:Request, res:Response)=> {
+  let client;
+  const {firstName, lastName, gender, birthDate, email,} = req.body
+
+  try {
+
+    client = await pool.connect()
+    const updateQuery = `
+    UPDATE users
+    SET firstName = $1, lastName = $2, gender = $3, birthDate = $4
+    WHERE email = $5
+    RETURNING *;
+    `;
+
+    const queryResponse = await client.query(updateQuery, [firstName, lastName, gender, birthDate, email])
+    if (!queryResponse|| 
+      queryResponse.rowCount !== 1
+    ) {
+      res.status(401).json({ok:0, errorMessage:"Account account cannot find."});
+    }
+    const user = queryResponse.rows[0]
+    
+    console.log(user)
+    res.status(200).json({ok:1, user})
+
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ok:0, error})
   } finally {
     if (client) client.release()
   }

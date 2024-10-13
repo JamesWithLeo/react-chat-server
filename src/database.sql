@@ -18,5 +18,5 @@ CREATE TABLE users (
   lastLogin TIMESTAMP,
   uid VARCHAR(255) NOT NULL UNIQUE,
   photoUrl VARCHAR(255),
-  birthDate Date,
+  birthDate DATE,
 );
