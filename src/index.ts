@@ -31,13 +31,13 @@ app.post("/signin", async (req:Request, res:Response)=> {
     const isValid = isValidForSignin({email,uid})
 
     if (!isValid) {
-      res.status(400).json({ok:0, errorMessage: "contains invalid data."});
+      res.status(400).send("contains invalid data.");
       return;
     }
     client = await pool.connect()
     const queryResponse = await client.query('SELECT * FROM users WHERE email = $1 AND uid = $2', [email, uid]);
     if (!queryResponse.rowCount) {
-      res.status(401).json({ok:0, errorMessage:"Account doesnt't exist."});
+      res.status(401).send("Account doesnt't exist.");
       return;
     } 
     const user = queryResponse.rows[0]
@@ -64,7 +64,7 @@ app.post("/signup", async(req:Request, res:Response)=> {
   try {
     client = await pool.connect();
     if (!isValid) {
-      res.status(400).json({ok:0, errorMessage: "contains invalid data."});
+      res.status(400).send("Contains invalid data.");
       return;
     }
 
@@ -74,7 +74,7 @@ app.post("/signup", async(req:Request, res:Response)=> {
     //  also keep in mind that the firebase auth in the client side is handling whether credential exist or not.
     const existQuery = await client.query('SELECT * FROM users WHERE email = $1 AND uid = $2', [email, uid]);
     if (existQuery.rowCount) {
-      res.status(409).json({ok: 0, errorMessage: "data already exist."})
+      res.status(409).send("data already exist.")
     }
 
     const insertQuery = `
@@ -113,7 +113,7 @@ app.post("/setup", async(req:Request, res:Response)=> {
     if (!queryResponse|| 
       queryResponse.rowCount !== 1
     ) {
-      res.status(401).json({ok:0, errorMessage:"Account account cannot find."});
+      res.status(401).send("Account account cannot find.");
     }
     const user = queryResponse.rows[0]
     
