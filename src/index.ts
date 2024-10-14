@@ -10,7 +10,7 @@ import initiatePool from "./database";
 import { isValidForSignin, IsValidForSignup } from "./validation";
 const app = express()
 
-const allowedOrigins = ['https://your-vercel-app.vercel.app' // production
+const allowedOrigins = ['https://react-chat-app-seven-murex.vercel.app/' // production
   , 'http://localhost:3000' // development
 ]
 app.use(json())
