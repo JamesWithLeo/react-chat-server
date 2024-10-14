@@ -5,12 +5,13 @@ dotenv.config();
 
 const port = process.env.PORT ?? 5000
 import express, {json,Request, Response } from "express"
+import cors from "cors"
 import initiatePool from "./database";
 import { isValidForSignin, IsValidForSignup } from "./validation";
 const app = express()
 
 app.use(json())
-
+app.use(cors())
 const pool = initiatePool()
 
 pool.on('error', (err, client) => {
