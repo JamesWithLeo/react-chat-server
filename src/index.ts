@@ -78,7 +78,7 @@ app.post("/signup", async(req:Request, res:Response)=> {
     }
 
     const insertQuery = `
-    INSERT INTO users (email, uid, phoneNumber, photoUrl, firstName, lastName)
+    INSERT INTO users (email, uid, phone_number, photo_url, first_name, last_name)
     VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *;`;
 
@@ -104,7 +104,7 @@ app.post("/setup", async(req:Request, res:Response)=> {
     client = await pool.connect()
     const updateQuery = `
     UPDATE users
-    SET firstName = $1, lastName = $2, gender = $3, birthDate = $4
+    SET first_name = $1, last_name = $2, gender = $3, birth_date = $4
     WHERE email = $5
     RETURNING *;
     `;
