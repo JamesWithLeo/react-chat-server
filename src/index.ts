@@ -10,8 +10,29 @@ import initiatePool from "./database";
 import { isValidForSignin, IsValidForSignup } from "./validation";
 const app = express()
 
+
+const allowedOrigins: string[] = [
+  'https://react-chat-app-seven-murex.vercel.app',
+  'http://localhost:3000'
+];
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allowed?: boolean) => void) {
+    // Allow requests with no origin (like mobile apps, curl requests)
+    if (!origin) return callback(null, true);
+
+    // Check if the incoming origin is in the allowed origins
+    if (allowedOrigins.includes(origin)) {
+        callback(null, true); // Allow the request
+    } else {
+        callback(new Error('Not allowed by CORS')); // Reject the request
+    }
+  }, // Replace with your allowed origin
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allowed HTTP methods
+  credentials: true, // Allow credentials (cookies, authorization headers, etc.)
+};
+
 app.use(json())
-app.use(cors())
+app.use(cors(corsOptions))
 const pool = initiatePool()
 
 pool.on('error', (err, client) => {
