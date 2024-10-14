@@ -10,19 +10,8 @@ import initiatePool from "./database";
 import { isValidForSignin, IsValidForSignup } from "./validation";
 const app = express()
 
-const allowedOrigins = ['https://react-chat-server-un9y.onrender.com', 'https://react-chat-app-seven-murex.vercel.app/' // production
-  , 'http://localhost:3000' // development
-]
 app.use(json())
-app.use(cors(
-  {
-    origin: allowedOrigins,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization'], // Specify the headers allowed in requests
-    exposedHeaders: ['Content-Length', 'X-Knowledge-Base-Id'], // Specify any headers you want to expose to the client
-  }
-))
+app.use(cors())
 const pool = initiatePool()
 
 pool.on('error', (err, client) => {
