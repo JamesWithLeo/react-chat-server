@@ -10,8 +10,17 @@ import initiatePool from "./database";
 import { isValidForSignin, IsValidForSignup } from "./validation";
 const app = express()
 
+const allowedOrigins = ['https://your-vercel-app.vercel.app' // production
+  , 'http://localhost:3000' // development
+]
 app.use(json())
-app.use(cors())
+app.use(cors(
+  {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
+  }
+))
 const pool = initiatePool()
 
 pool.on('error', (err, client) => {
