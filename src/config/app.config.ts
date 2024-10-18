@@ -1,6 +1,6 @@
 export const allowedOrigins: string[] = [
   'https://react-chat-app-seven-murex.vercel.app',
-  'http://localhost:5000/',
+  'https://react-chat-2j7vzifrp-jameswithleos-projects.vercel.app',
   'http://localhost:3000'
 ];
 
