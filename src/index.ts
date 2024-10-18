@@ -8,28 +8,37 @@ import express, {json,Request, Response } from "express"
 import cors from "cors"
 import initiatePool from "./database";
 import { isValidForSignin, IsValidForSignup } from "./validation";
+import { createServer } from "http";
+
+import {  corsOptions } from "./config/app.config";
+import { createSocket } from "./sockets";
+import { off } from "process";
+
 const app = express()
+const httpServer = createServer(app)
+const io = createSocket(httpServer)
 
+io.engine.on("connection_error", (err) => {
+  console.log(err.req);      // the request object
+  console.log(err.code);     // the error code, for example 1
+  console.log(err.message);  // the error message, for example "Session ID unknown"
+  console.log(err.context);  // some additional error context
+});
 
-const allowedOrigins: string[] = [
-  'https://react-chat-app-seven-murex.vercel.app',
-  'http://localhost:3000'
-];
-const corsOptions = {
-  origin: function (origin: string | undefined, callback: (err: Error | null, allowed?: boolean) => void) {
-    // Allow requests with no origin (like mobile apps, curl requests)
-    if (!origin) return callback(null, true);
+io.on('connection', (socket) => {
+  console.log(`New connection: ${socket.id}`);
+  // Handle an event sent by the client
+  socket.on("hello", () => {
+      console.log(`Message from ${socket.id}`);
+      
+      // Broadcast message to all connected clients
+  });
+  // Handle disconnect event
+  socket.on('disconnect', () => {
+      console.log(`Disconnected: ${socket.id}`);
+  });
+});
 
-    // Check if the incoming origin is in the allowed origins
-    if (allowedOrigins.includes(origin)) {
-        callback(null, true); // Allow the request
-    } else {
-        callback(new Error('Not allowed by CORS')); // Reject the request
-    }
-  }, // Replace with your allowed origin
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allowed HTTP methods
-  credentials: true, // Allow credentials (cookies, authorization headers, etc.)
-};
 
 app.use(json())
 app.use(cors(corsOptions))
@@ -48,15 +57,15 @@ app.route("/chats").get(async(req:Request, res:Response)=> {
 app.post("/signin", async (req:Request, res:Response)=> {
   let client;
   try {
-    const {email, uid} = req.body;
-    const isValid = isValidForSignin({email,uid})
+    const { uid} = req.body;
+    const isValid = isValidForSignin({uid})
 
     if (!isValid) {
       res.status(400).send("contains invalid data.");
       return;
     }
     client = await pool.connect()
-    const queryResponse = await client.query('SELECT * FROM users WHERE email = $1 AND uid = $2', [email, uid]);
+    const queryResponse = await client.query('SELECT * FROM users WHERE uid = $1', [uid]);
     if (!queryResponse.rowCount) {
       res.status(401).send("Account doesnt't exist.");
       return;
@@ -93,7 +102,7 @@ app.post("/signup", async(req:Request, res:Response)=> {
     // check whether the email and uid already exist .
     // The email and uid in the databse has already UNIQUE constraint.
     //  also keep in mind that the firebase auth in the client side is handling whether credential exist or not.
-    const existQuery = await client.query('SELECT * FROM users WHERE email = $1 AND uid = $2', [email, uid]);
+    const existQuery = await client.query('SELECT * FROM users WHERE uid = $1', [uid]);
     if (existQuery.rowCount) {
       res.status(409).send("data already exist.")
     }
@@ -117,20 +126,20 @@ app.post("/signup", async(req:Request, res:Response)=> {
 })
 
 app.post("/setup", async(req:Request, res:Response)=> {
-  let client;
-  const {firstName, lastName, gender, birthDate, email,} = req.body
+  let db;
+  const {firstName, lastName, gender, birthDate,uid,} = req.body
 
   try {
 
-    client = await pool.connect()
+    db = await pool.connect()
     const updateQuery = `
     UPDATE users
     SET first_name = $1, last_name = $2, gender = $3, birth_date = $4
-    WHERE email = $5
+    WHERE uid = $5
     RETURNING *;
     `;
 
-    const queryResponse = await client.query(updateQuery, [firstName, lastName, gender, birthDate, email])
+    const queryResponse = await db.query(updateQuery, [firstName, lastName, gender, birthDate, uid])
     if (!queryResponse|| 
       queryResponse.rowCount !== 1
     ) {
@@ -145,10 +154,60 @@ app.post("/setup", async(req:Request, res:Response)=> {
     console.error(error)
     res.status(500).json({ok:0, error})
   } finally {
-    if (client) client.release()
+    if (db) db.release()
   }
 })
 
-app.listen(port,()=>{
-  console.log(`listening at http://localhost:${port}`)
+app.get("/search/people/:id", async(req:Request, res:Response)=> {
+  const query = req.query.query as string ?? " "
+  const searchTerms = query.split(" ").filter(name=> name)
+  console.log("Searching for:", searchTerms);
+  const user_id = req.params.id; 
+
+  let db;
+  const finalValues: string[] = [user_id]
+  let searchQuery = `
+    SELECT id, email, first_name, last_name, photo_url 
+    FROM users
+    WHERE id != $1`
+  const limit = 20
+  const offset = 0
+  try 
+  {
+    db = await pool.connect()
+
+  
+    if (Array.isArray(searchTerms) &&  searchTerms.length ) {
+      const conditions = searchTerms.flatMap((_, index)=> [
+        `first_name ILIKE $${index * 2 + 2}`, 
+        `last_name ILIKE $${index * 2 + 3}`
+      ]).join(" OR ");
+      const values = searchTerms.flatMap(name => [`%${name}%`, `%${name}%`]);
+      searchQuery = `
+        SELECT id, email, first_name, last_name, photo_url 
+        FROM users 
+        WHERE id != $1 AND (${conditions})
+      ;`;
+      finalValues.push(...values)
+    } 
+    const searchResponse = await db.query(searchQuery, finalValues)
+
+    if (!searchResponse || !searchResponse.rowCount) {
+      res.status(401).send("Cannot find recommendation.")
+      return;
+    }
+    
+    res.status(200).json({ok:1, data:searchResponse.rows})
+    return
+  }catch (error) {
+    console.error(error)
+    res.status(500).json({ok:0, error})
+  } finally {
+    if (db) db.release()
+  }
+
+})
+
+httpServer.listen(port , ()=> {
+  console.log(`Listening at http://localhost:${port}`)
 })
