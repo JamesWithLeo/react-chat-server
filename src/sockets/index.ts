@@ -1,5 +1,5 @@
-import {  Server as HttpServerType } from "http";
-import {Server }from "socket.io"
+import { Server as HttpServerType } from "http";
+import { Server } from "socket.io";
 import { allowedOrigins } from "../config/app.config";
 
 interface ServerToClientEvents {
@@ -21,15 +21,17 @@ interface SocketData {
   age: number;
 }
 
-
-
 export function createSocket(httpServer: HttpServerType) {
-
-  return new Server<ClientToServerEvents, ServerToClientEvents,InterServerEvents, SocketData>(httpServer, 
-    { cors: {
-    origin:allowedOrigins,
-    methods: ["GET", "POST"],
-    credentials: true
-  }})
-
+  return new Server<
+    ClientToServerEvents,
+    ServerToClientEvents,
+    InterServerEvents,
+    SocketData
+  >(httpServer, {
+    cors: {
+      origin: allowedOrigins,
+      methods: ["GET", "POST"],
+      credentials: true,
+    },
+  });
 }
