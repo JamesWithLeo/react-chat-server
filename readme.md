@@ -1,4 +1,4 @@
-## Server side for WeChat [_(Forkerd)_](https://github.com/JamesWithLeo/react-chat-app)
+## Server side for WeChat [_(Forkered)_](https://github.com/JamesWithLeo/react-chat-app)
 
 ## Made by [James Leo Ocampo](https://www.linkedin.com/in/james-leo-ocampo-888686307)
 
@@ -9,3 +9,4 @@
 - Dotenv
 - Postgres
 - Node-postgres
+- Socket.io

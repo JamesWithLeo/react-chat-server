@@ -177,10 +177,14 @@ export const QueryConversation = async (db: PoolClient, user_id: string) => {
 
   // fetch the conversation messages
   const convoQuery = `
-  SELECT 
+ SELECT 
     c.conversation_id, 
     c.conversation_name, 
-    c.conversation_thumbnail, 
+    CASE 
+        WHEN c.conversation_type = 'direct' THEN u.photo_url
+        ELSE c.conversation_thumbnail
+    END AS conversation_thumbnail,
+    c.conversation_type,
     c.created_at, 
     c.updated_at,
     m.messages_id AS last_message_id, 
@@ -188,27 +192,33 @@ export const QueryConversation = async (db: PoolClient, user_id: string) => {
     m.content AS last_message_content, 
     m.created_at AS last_message_created_at,
     CASE 
-      WHEN c.conversation_type = 'direct' THEN 
-        CONCAT(u.first_name, ' ', u.last_name) 
-      ELSE NULL 
-    END AS recipient_name
-  FROM 
+        WHEN c.conversation_type = 'direct' THEN 
+            CONCAT(u.first_name, ' ', u.last_name) 
+        ELSE NULL 
+    END AS recipient_name,
+    CASE 
+        WHEN c.conversation_type = 'direct' THEN 
+            u.id  -- Get the recipient's ID from the users table
+        ELSE NULL 
+    END AS recipient_id
+FROM 
     conversation c
-  LEFT JOIN messages m ON m.messages_id = (
+LEFT JOIN messages m ON m.messages_id = (
     SELECT messages_id 
     FROM messages 
     WHERE conversation_id = c.conversation_id 
     ORDER BY created_at DESC 
     LIMIT 1
-  )
-  LEFT JOIN conversation_participants cp ON cp.conversation_id = c.conversation_id 
-  LEFT JOIN users u ON u.id = cp.user_id 
-  WHERE 
+)
+LEFT JOIN conversation_participants cp ON cp.conversation_id = c.conversation_id 
+LEFT JOIN users u ON u.id = cp.user_id 
+WHERE 
     c.conversation_id = ANY($1::UUID[]) 
     AND cp.user_id != $2 
-  ORDER BY 
+ORDER BY 
     c.updated_at DESC;
-  
+
+
     `;
   const convoQueryResponse = await db.query(convoQuery, [
     conversation_ids,
