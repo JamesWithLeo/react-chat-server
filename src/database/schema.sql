@@ -4,9 +4,11 @@ CREATE TYPE gender AS ENUM ('male', 'female', 'others');
 -- CreateStatus 
 CREATE TYPE status AS ENUM ('offline', 'online');
 
+CREATE TYPE messages_type as ENUM ("text", "doc", "link", "reply", "media"
+)
 -- CreateTable
 CREATE TABLE users (
-  id SERIAL PRIMARY KEY NOT NULL,
+  id UUID PRIMARY KEY NOT NULL,
 
   firstName VARCHAR(255),
   lastName VARCHAR(255),
@@ -28,7 +30,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE conversation_participants (
   conversation_id UUID REFERENCES conversation(conversation_id) ON DELETE CASCADE,
-  user_id INT REFERENCES users(id) ON DELETE CASCADE, 
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE, 
   joined_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (conversation_id, user_id)  -- Composite primary key
 );
@@ -49,7 +51,7 @@ CREATE TABLE conversation (
 CREATE TABLE messages (
   messages_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   conversation_id UUID REFERENCES conversation(conversation_id) ON DELETE CASCADE,
-  sender_id INT REFERENCES users(id) ON DELETE CASCADE,
+  sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
   content TEXT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   is_read BOOLEAN DEFAULT FALSE 

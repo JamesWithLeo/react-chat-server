@@ -4,7 +4,9 @@ import { pool } from "../index";
 const router = Router();
 
 router.get("/:id", async (req: Request, res: Response) => {
-  const peerId = req.params.id;
+  const peerId = req.query.peerId;
+  const userId = req.params.id;
+
   let db;
   try {
     db = await pool.connect();

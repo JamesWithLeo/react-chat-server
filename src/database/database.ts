@@ -22,7 +22,10 @@ const initiatePool = () => {
     port: JSON.parse(process.env.POSTGRES_PORT!),
   });
 };
+
 export default initiatePool;
+
+export type IMessage_type = "text" | "reply" | "doc" | "link" | "media";
 
 export const QueryUsers = async (
   db: PoolClient,
@@ -95,10 +98,11 @@ export const CheckConversation = async (
 
 export const CreateConversation = async (
   db: PoolClient,
-  sender_id: string,
+  senderId: string,
   recipientId: string,
   otherParticipants: string[],
   initialMessage: string,
+  messageType: IMessage_type,
 ) => {
   let insertConversationQuery: string;
   let conversation_type;
@@ -126,7 +130,7 @@ export const CreateConversation = async (
   if (!conversation_id) {
     throw new Error("Cannot create conversation");
   }
-  const participantIds = [sender_id, recipientId, ...otherParticipants];
+  const participantIds = [senderId, recipientId, ...otherParticipants];
 
   const insertParticipantsQuery = `
   INSERT INTO conversation_participants (conversation_id, user_id)
@@ -139,19 +143,42 @@ export const CreateConversation = async (
   );
 
   const insertMessageQuery = `
-  INSERT INTO messages (conversation_id, sender_id, content)
-  VALUES ($1, $2, $3);
+  INSERT INTO messages (conversation_id, sender_id, content, message_type)
+  VALUES ($1, $2, $3, $4);
   `;
 
   const messageQueryResponse = await db.query(insertMessageQuery, [
     conversation_id,
-    sender_id,
+    senderId,
     initialMessage,
+    messageType,
   ]);
   console.log(participantsQueryResponse);
   console.log(messageQueryResponse);
 
   return conversation_id as string;
+};
+
+export const InsertMessage = async (
+  db: PoolClient,
+  conversation_id: string,
+  senderId: string,
+  message: string,
+  messageType: IMessage_type,
+) => {
+  const insertMessageQuery = `
+  INSERT INTO messages (conversation_id, sender_id, content, message_type)
+  VALUES ($1, $2, $3, $4)
+  RETURNING *;
+  `;
+  const messageQueryResponse = await db.query(insertMessageQuery, [
+    conversation_id,
+    senderId,
+    message,
+    messageType,
+  ]);
+  console.log(messageQueryResponse.rows);
+  return messageQueryResponse.rows[0];
 };
 
 export const QueryConversation = async (db: PoolClient, user_id: string) => {
@@ -187,7 +214,7 @@ export const QueryConversation = async (db: PoolClient, user_id: string) => {
     c.conversation_type,
     c.created_at, 
     c.updated_at,
-    m.messages_id AS last_message_id, 
+    m.message_id AS last_message_id, 
     m.sender_id AS last_sender_id, 
     m.content AS last_message_content, 
     m.created_at AS last_message_created_at,
@@ -203,8 +230,8 @@ export const QueryConversation = async (db: PoolClient, user_id: string) => {
     END AS recipient_id
 FROM 
     conversation c
-LEFT JOIN messages m ON m.messages_id = (
-    SELECT messages_id 
+LEFT JOIN messages m ON m.message_id = (
+    SELECT message_id 
     FROM messages 
     WHERE conversation_id = c.conversation_id 
     ORDER BY created_at DESC 

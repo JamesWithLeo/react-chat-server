@@ -16,6 +16,8 @@ import { createSocket } from "./sockets";
 import peerRouter from "./router/peerRoutes";
 import chatRouter from "./router/chatRoutes";
 import convoRouter from "./router/convoRoutes";
+import messagesRouter from "./router/messageRoute";
+import authRouter from "./router/authRoutes";
 
 const app = express();
 const httpServer = createServer(app);
@@ -51,131 +53,7 @@ pool.on("error", (err, client) => {
   process.exit(-1);
 });
 
-app.post("/signin", async (req: Request, res: Response) => {
-  let client;
-  try {
-    const { uid } = req.body;
-    const isValid = isValidForSignin({ uid });
-
-    if (!isValid) {
-      res.status(400).send("contains invalid data.");
-      return;
-    }
-    client = await pool.connect();
-    const queryResponse = await client.query(
-      "SELECT * FROM users WHERE uid = $1",
-      [uid],
-    );
-    if (!queryResponse.rowCount) {
-      res.status(401).send("Account doesnt't exist.");
-      return;
-    }
-    const user = queryResponse.rows[0];
-    res.status(200).json({ ok: 1, user });
-  } catch (error) {
-    console.error("Error during query:", error);
-    res.status(500).json();
-  } finally {
-    if (client) {
-      client.release();
-    }
-  }
-});
-
-app.post("/signup", async (req: Request, res: Response) => {
-  let client;
-  let { email, uid, phoneNumber, photoUrl, firstName, lastName } = req.body;
-
-  console.log({ email, uid, phoneNumber, photoUrl, firstName, lastName });
-
-  const isValid = IsValidForSignup({
-    email,
-    uid,
-    phoneNumber,
-    photoUrl,
-    firstName,
-    lastName,
-  });
-
-  try {
-    client = await pool.connect();
-    if (!isValid) {
-      res.status(400).send("Contains invalid data.");
-      return;
-    }
-
-    // double checking,
-    // check whether the email and uid already exist .
-    // The email and uid in the databse has already UNIQUE constraint.
-    //  also keep in mind that the firebase auth in the client side is handling whether credential exist or not.
-    const existQuery = await client.query(
-      "SELECT * FROM users WHERE uid = $1",
-      [uid],
-    );
-    if (existQuery.rowCount) {
-      res.status(409).send("data already exist.");
-    }
-
-    const insertQuery = `
-    INSERT INTO users (email, uid, phone_number, photo_url, first_name, last_name)
-    VALUES ($1, $2, $3, $4, $5, $6)
-    RETURNING *;`;
-
-    const queryResponse = await client.query(insertQuery, [
-      email,
-      uid,
-      phoneNumber,
-      photoUrl,
-      firstName,
-      lastName,
-    ]);
-    const user = queryResponse.rows[0];
-    console.log(user);
-    res.status(200).json({ ok: 1, user });
-  } catch (error) {
-    console.log("Error during process:", error);
-    res.status(500).json();
-  } finally {
-    if (client) client.release();
-  }
-});
-
-app.post("/setup", async (req: Request, res: Response) => {
-  let db;
-  const { firstName, lastName, gender, birthDate, uid } = req.body;
-
-  try {
-    db = await pool.connect();
-    const updateQuery = `
-    UPDATE users
-    SET first_name = $1, last_name = $2, gender = $3, birth_date = $4
-    WHERE uid = $5
-    RETURNING *;
-    `;
-
-    const queryResponse = await db.query(updateQuery, [
-      firstName,
-      lastName,
-      gender,
-      birthDate,
-      uid,
-    ]);
-    if (!queryResponse || queryResponse.rowCount !== 1) {
-      res.status(401).send("Account account cannot find.");
-    }
-    const user = queryResponse.rows[0];
-
-    console.log(user);
-    res.status(200).json({ ok: 1, user });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ ok: 0, error });
-  } finally {
-    if (db) db.release();
-  }
-});
-
-app.get("/search/people/:id", async (req: Request, res: Response) => {
+app.get("/search/:id", async (req: Request, res: Response) => {
   const query = (req.query.query as string) ?? " ";
   const scope = (req.query.scope as string) ?? "all";
   const user_id = req.params.id;
@@ -255,6 +133,10 @@ app.use("/peer", peerRouter);
 app.use("/chat", chatRouter);
 
 app.use("/convo", convoRouter);
+
+app.use("/messages", messagesRouter);
+
+app.use("/auth", authRouter);
 
 httpServer.listen(port, () => {
   console.log(`Listening at http://localhost:${port}`);
