@@ -71,11 +71,15 @@ export const QueryUsers = async (
   return response;
 };
 
-export const CheckConversation = async (
-  db: PoolClient,
-  senderId: string,
-  recipientId: string,
-) => {
+export const getConversationId = async ({
+  db,
+  senderId,
+  recipientId,
+}: {
+  db: PoolClient;
+  senderId: string;
+  recipientId: string;
+}) => {
   const query = `
   SELECT c.conversation_id FROM conversation c
   JOIN conversation_participants cp1 ON c.conversation_id = cp1.conversation_id
@@ -90,7 +94,7 @@ export const CheckConversation = async (
   }
 
   if (response && response.rows.length) {
-    return response.rows[0];
+    return response.rows[0].conversation_id;
   } else {
     return null;
   }
@@ -144,7 +148,8 @@ export const CreateConversation = async (
 
   const insertMessageQuery = `
   INSERT INTO messages (conversation_id, sender_id, content, message_type)
-  VALUES ($1, $2, $3, $4);
+  VALUES ($1, $2, $3, $4)
+  RETURNING *;
   `;
 
   const messageQueryResponse = await db.query(insertMessageQuery, [
@@ -153,10 +158,8 @@ export const CreateConversation = async (
     initialMessage,
     messageType,
   ]);
-  console.log(participantsQueryResponse);
-  console.log(messageQueryResponse);
 
-  return conversation_id as string;
+  return messageQueryResponse.rows[0];
 };
 
 export const InsertMessage = async (
@@ -179,6 +182,37 @@ export const InsertMessage = async (
   ]);
   console.log(messageQueryResponse.rows);
   return messageQueryResponse.rows[0];
+};
+
+const getGroupConversationId = async ({
+  db,
+  userId: user_id,
+  peerId: peer_id,
+}: {
+  db: PoolClient;
+  userId: string;
+  peerId: string;
+}) => {
+  const searchConversationId = `
+  SELECT cp.conversation_id
+  FROM conversation_participants cp
+  JOIN conversation c ON cp.conversation_id = c.conversation_id
+  WHERE cp.user_id IN ($1, $2)
+    AND c.conversation_type = 'direct'
+  GROUP BY cp.conversation_id
+  HAVING COUNT(DISTINCT cp.user_id) = 2;
+  `;
+
+  const searchResponse = await db.query(searchConversationId, [
+    user_id,
+    peer_id,
+  ]);
+
+  if (searchResponse && searchResponse.rows[0]) {
+    return searchResponse.rows[0].conversation_id;
+  } else {
+    return null;
+  }
 };
 
 export const QueryConversation = async (db: PoolClient, user_id: string) => {

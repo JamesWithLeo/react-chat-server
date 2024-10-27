@@ -1,6 +1,6 @@
 import { Request, Response, Router } from "express";
 import {
-  CheckConversation,
+  getConversationId,
   CreateConversation,
   InsertMessage,
 } from "../database/database";
@@ -20,10 +20,19 @@ router.post("/:id", async (req: Request, res: Response) => {
     console.log("message:", message);
     console.log("recipientId", recipientId);
 
-    const isConvoExist = await CheckConversation(db, senderId, recipientId);
-    console.log("is convo exist:", isConvoExist);
-    if (!isConvoExist.conversation_id) {
-      const conversation_id = await CreateConversation(
+    const conversationId = await getConversationId({
+      db,
+      senderId,
+      recipientId,
+    });
+
+    console.log(
+      `Sender: ${senderId} and recipient ${recipientId} with conversation id of:`,
+      conversationId,
+    );
+
+    if (!conversationId) {
+      const messageResponse = await CreateConversation(
         db,
         senderId,
         recipientId,
@@ -31,12 +40,12 @@ router.post("/:id", async (req: Request, res: Response) => {
         message,
         messageType,
       );
-      res.status(200).json({ conversation_id, ok: 1, isNew: true });
+      res.status(200).json({ message: messageResponse, ok: 1, isNew: true });
       return;
     } else {
       const messageResponse = await InsertMessage(
         db,
-        isConvoExist.conversation_id,
+        conversationId,
         senderId,
         message,
         messageType,
