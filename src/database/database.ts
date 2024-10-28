@@ -238,49 +238,53 @@ export const QueryConversation = async (db: PoolClient, user_id: string) => {
 
   // fetch the conversation messages
   const convoQuery = `
- SELECT 
-    c.conversation_id, 
-    c.conversation_name, 
-    CASE 
-        WHEN c.conversation_type = 'direct' THEN u.photo_url
-        ELSE c.conversation_thumbnail
-    END AS conversation_thumbnail,
-    c.conversation_type,
-    c.created_at, 
-    c.updated_at,
-    m.message_id AS last_message_id, 
-    m.sender_id AS last_sender_id, 
-    m.content AS last_message_content, 
-    m.created_at AS last_message_created_at,
-    CASE 
-        WHEN c.conversation_type = 'direct' THEN 
-            CONCAT(u.first_name, ' ', u.last_name) 
-        ELSE NULL 
-    END AS recipient_name,
-    CASE 
-        WHEN c.conversation_type = 'direct' THEN 
-            u.id  -- Get the recipient's ID from the users table
-        ELSE NULL 
-    END AS recipient_id
-FROM 
-    conversation c
-LEFT JOIN messages m ON m.message_id = (
-    SELECT message_id 
-    FROM messages 
-    WHERE conversation_id = c.conversation_id 
-    ORDER BY created_at DESC 
-    LIMIT 1
-)
-LEFT JOIN conversation_participants cp ON cp.conversation_id = c.conversation_id 
-LEFT JOIN users u ON u.id = cp.user_id 
-WHERE 
-    c.conversation_id = ANY($1::UUID[]) 
-    AND cp.user_id != $2 
-ORDER BY 
-    c.updated_at DESC;
+  SELECT 
+      c.conversation_id, 
+      c.conversation_name, 
+      CASE 
+          WHEN c.conversation_type = 'direct' THEN u.photo_url
+          ELSE c.conversation_thumbnail
+      END AS conversation_thumbnail,
+      c.conversation_type,
+      c.created_at, 
+      c.updated_at,
+      m.message_id AS last_message_id, 
+      m.sender_id AS last_sender_id, 
+      m.content AS last_message_content, 
+      m.created_at AS last_message_created_at,
+      CASE 
+          WHEN c.conversation_type = 'direct' THEN 
+              CONCAT(other_u.first_name, ' ', other_u.last_name) 
+          ELSE NULL 
+      END AS recipient_name,
+      CASE 
+          WHEN c.conversation_type = 'direct' THEN 
+              other_u.id  -- Get the recipient's ID from the other users table
+          ELSE NULL 
+      END AS recipient_id,
+      cp.is_pinned,   -- Get the is_pinned status for the current user
+      cp.is_archived  -- Get the is_archived status for the current user
+  FROM 
+      conversation c
+  LEFT JOIN messages m ON m.message_id = (
+      SELECT message_id 
+      FROM messages 
+      WHERE conversation_id = c.conversation_id 
+      ORDER BY created_at DESC 
+      LIMIT 1
+  )
+  LEFT JOIN conversation_participants cp ON cp.conversation_id = c.conversation_id 
+      AND cp.user_id = $2  -- Filter conversation_participants for the current user
+  LEFT JOIN conversation_participants other_cp ON other_cp.conversation_id = c.conversation_id 
+      AND other_cp.user_id != $2  -- Get the other participant in the conversation
+  LEFT JOIN users u ON u.id = cp.user_id 
+  LEFT JOIN users other_u ON other_u.id = other_cp.user_id  -- Join to get the other user's details
+  WHERE 
+      c.conversation_id = ANY($1::UUID[]) 
+  ORDER BY 
+      c.updated_at DESC;
+`;
 
-
-    `;
   const convoQueryResponse = await db.query(convoQuery, [
     conversation_ids,
     user_id,
@@ -289,4 +293,66 @@ ORDER BY
     throw new Error("Failed to fetch conversation");
   }
   return convoQueryResponse.rows;
+};
+
+export const PinnedConversation = async ({
+  db,
+  isPinned,
+  userId,
+  conversationId,
+}: {
+  db: PoolClient;
+  isPinned: boolean;
+  userId: string;
+  conversationId: string;
+}) => {
+  const pinQuery = `
+  UPDATE conversation_participants 
+  SET is_pinned = $1
+  WHERE user_id = $2 AND conversation_id = $3
+  RETURNING is_pinned;
+  `;
+
+  const pinResponse = await db.query(pinQuery, [
+    isPinned,
+    userId,
+    conversationId,
+  ]);
+
+  if (pinResponse && pinResponse.rows[0]) {
+    return !!pinResponse.rows[0].is_pinned;
+  } else {
+    return false;
+  }
+};
+
+export const ArchiveConversation = async ({
+  db,
+  isArchived,
+  userId,
+  conversationId,
+}: {
+  db: PoolClient;
+  isArchived: string;
+  userId: string;
+  conversationId: string;
+}) => {
+  const pinQuery = `
+  UPDATE conversation_participants 
+  SET is_archived = $1
+  WHERE user_id = $2 AND conversation_id = $3
+  RETURNING is_archived;
+  `;
+
+  const pinResponse = await db.query(pinQuery, [
+    isArchived,
+    userId,
+    conversationId,
+  ]);
+
+  if (pinResponse && pinResponse.rows[0]) {
+    return !!pinResponse.rows[0].is_archived;
+  } else {
+    return false;
+  }
 };

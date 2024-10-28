@@ -32,6 +32,7 @@ CREATE TABLE conversation_participants (
   conversation_id UUID REFERENCES conversation(conversation_id) ON DELETE CASCADE,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE, 
   joined_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  is_pinned BOOLEAN DEFAULT false,
   PRIMARY KEY (conversation_id, user_id)  -- Composite primary key
 );
 
