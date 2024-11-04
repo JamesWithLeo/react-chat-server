@@ -5,14 +5,14 @@ dotenv.config();
 const port = process.env.PORT ?? 5000;
 import express, { json, Request, Response } from "express";
 import cors from "cors";
-import initiatePool, { QueryUsers } from "./database/database";
-import { isValidForSignin, IsValidForSignup } from "./validation";
+import initiateDbPool from "./database/database";
 import { createServer } from "http";
 
 import { corsOptions } from "./config/app.config";
 import { createSocket } from "./sockets";
 
 // routes
+import searchRouter from "./router/searchRoute";
 import peerRouter from "./router/peerRoutes";
 import chatRouter from "./router/chatRoutes";
 import convoRouter from "./router/convoRoutes";
@@ -46,87 +46,14 @@ io.on("connection", (socket) => {
 
 app.use(json());
 app.use(cors(corsOptions));
-export const pool = initiatePool();
+export const pool = initiateDbPool();
 
 pool.on("error", (err, client) => {
   console.error("Unexpected error on idle client", err);
   process.exit(-1);
 });
 
-app.get("/search/:id", async (req: Request, res: Response) => {
-  const query = (req.query.query as string) ?? " ";
-  const scope = (req.query.scope as string) ?? "all";
-  const user_id = req.params.id;
-  const searchTerms = query.split(" ").filter((name) => name);
-  console.log(`$ ${user_id} is...`);
-  console.log("- Searching for:", searchTerms);
-  console.log("- With scope of: ", scope);
-
-  let db;
-  const limit = "20";
-  const offset = "0";
-  try {
-    db = await pool.connect();
-
-    switch (scope) {
-      case "all":
-        const PeopleAllScope = await QueryUsers(
-          db,
-          searchTerms,
-          [],
-          limit,
-          offset,
-        );
-        if (!PeopleAllScope || !PeopleAllScope.rowCount) {
-          res.status(200).json({ ok: 1, users: null, chats: null });
-          return;
-        }
-        res
-          .status(200)
-          .json({ ok: 1, users: PeopleAllScope.rows, chats: null });
-        return;
-
-      case "people":
-        const peopleScope = await QueryUsers(
-          db,
-          searchTerms,
-          [user_id],
-          limit,
-          offset,
-        );
-        if (!peopleScope || !peopleScope.rowCount) {
-          res.status(200).json({ ok: 1, user: null, chats: null });
-          return;
-        }
-        res.status(200).json({ ok: 1, users: peopleScope.rows, chats: null });
-        return;
-
-      case "chats":
-        // const people = await queryUsers(
-        //   db,
-        //   searchTerms,
-        //   [user_id],
-        //   limit,
-        //   offset,
-        // );
-        // if (!people || !people.rowCount) {
-        //   res.status(401).send("Cannot find recommendation.");
-        //   return;
-        // }
-        res.status(200).json({ ok: 1, users: null, chats: null });
-        return;
-      default:
-        throw new Error(
-          `${scope} is invalid scope. select from ("all", "people", "chats") `,
-        );
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ ok: 0, error });
-  } finally {
-    if (db) db.release();
-  }
-});
+app.use("/search", searchRouter);
 
 app.use("/peer", peerRouter);
 
