@@ -1,15 +1,20 @@
 import { Server as HttpServerType } from "http";
 import { Server } from "socket.io";
 import { allowedOrigins } from "../config/app.config";
+import { IMessage_type } from "../database/database";
 
 interface ServerToClientEvents {
-  noArg: () => void;
-  basicEmit: (a: number, b: string, c: Buffer) => void;
-  withAck: (d: string, callback: (e: number) => void) => void;
+  toClientMessage: (messageData: any) => void;
 }
 
 interface ClientToServerEvents {
-  hello: () => void;
+  joinMessage: ({ conversationId }: { conversationId: string }) => void;
+  newMessage: (messageData: {
+    sender_id: string;
+    conversation_id: string;
+    content: string;
+    message_type: IMessage_type;
+  }) => void;
 }
 
 interface InterServerEvents {

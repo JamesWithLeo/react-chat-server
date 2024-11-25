@@ -100,6 +100,7 @@ export const getConversationId = async ({
   }
 };
 
+// this func will add a new message to new conversation
 export const CreateConversation = async (
   db: PoolClient,
   senderId: string,
@@ -162,6 +163,7 @@ export const CreateConversation = async (
   return messageQueryResponse.rows[0];
 };
 
+// this function will add a new message to existing conversation
 export const InsertMessage = async (
   db: PoolClient,
   conversation_id: string,
@@ -174,6 +176,7 @@ export const InsertMessage = async (
   VALUES ($1, $2, $3, $4)
   RETURNING *;
   `;
+
   const messageQueryResponse = await db.query(insertMessageQuery, [
     conversation_id,
     senderId,
@@ -183,6 +186,15 @@ export const InsertMessage = async (
   console.log(messageQueryResponse.rows);
   return messageQueryResponse.rows[0];
 };
+
+// todo: finish the function UpsertMessage
+export const UpsertMessage = async (
+  db: PoolClient,
+  senderId: string,
+  message: string,
+  messageType: IMessage_type,
+  recipientId: string,
+) => {};
 
 const getGroupConversationId = async ({
   db,
