@@ -1,8 +1,7 @@
 export const allowedOrigins: string[] = [
   "https://react-chat-app-seven-murex.vercel.app",
-  "https://react-chat-2j7vzifrp-jameswithleos-projects.vercel.app",
+  "https://react-chat-server-un9y.onrender.com",
   "http://localhost:3000",
-  "http://localhost:5000/",
 ];
 
 export const corsOptions = {
