@@ -14,6 +14,7 @@ interface ServerToClientEvents {
     conversation_id: string;
     isTyping: boolean;
   }) => void;
+  peersStatus: (data: { peers: { id: string; isOnline: boolean } }) => void;
 }
 
 interface ClientToServerEvents {
@@ -32,6 +33,13 @@ interface ClientToServerEvents {
     sender_id: string;
     conversation_id: string;
     isTyping: boolean;
+  }) => void;
+  peersStatus: ({
+    sender_id,
+    isOnline,
+  }: {
+    sender_id: string;
+    isOnline: boolean;
   }) => void;
 }
 

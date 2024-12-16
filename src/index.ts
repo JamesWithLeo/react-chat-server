@@ -5,7 +5,11 @@ dotenv.config();
 const port = process.env.PORT ?? 5000;
 import express, { json, Request, Response } from "express";
 import cors from "cors";
-import initiateDbPool, { InsertMessage } from "./database/database";
+import initiateDbPool, {
+  getConversationId,
+  getUserConversationId,
+  InsertMessage,
+} from "./database/database";
 import { createServer } from "http";
 
 import { corsOptions } from "./config/app.config";
@@ -70,6 +74,25 @@ io.on("connection", (socket) => {
       id: sender_id,
       isTyping,
     });
+  });
+
+  socket.on("peersStatus", async (data) => {
+    let db;
+    try {
+      db = await pool.connect();
+      const { isOnline, sender_id } = data;
+      console.log("someone is active!");
+      const conversationRooms = await getUserConversationId({
+        userId: sender_id,
+        db,
+      });
+
+      socket
+        .to(conversationRooms)
+        .emit("peersStatus", { peers: { isOnline, id: sender_id } });
+    } finally {
+      if (db) db.release();
+    }
   });
   // Handle disconnect event
   socket.on("disconnect", () => {

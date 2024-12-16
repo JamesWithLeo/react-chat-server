@@ -100,6 +100,24 @@ export const getConversationId = async ({
   }
 };
 
+export const getUserConversationId = async ({
+  db,
+  userId,
+}: {
+  userId: string;
+  db: PoolClient;
+}) => {
+  const query = `
+  SELECT conversation_id FROM conversation_participants WHERE user_id = $1;
+  `;
+  const response = await db.query(query, [userId]);
+  if (!response) {
+    throw new Error("Failed to check conversation");
+  }
+  if (response.rowCount) return response.rows;
+  else return [];
+};
+
 // this func will add a new message to new conversation
 export const CreateConversation = async (
   db: PoolClient,
