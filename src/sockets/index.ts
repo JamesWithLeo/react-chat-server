@@ -8,9 +8,11 @@ interface ServerToClientEvents {
   peerTyping: ({
     id,
     conversation_id,
+    isTyping,
   }: {
     id: string;
     conversation_id: string;
+    isTyping: boolean;
   }) => void;
 }
 
@@ -22,12 +24,14 @@ interface ClientToServerEvents {
     content: string;
     message_type: IMessage_type;
   }) => void;
-  activeTyping: ({
+  handleTyping: ({
     sender_id,
     conversation_id,
+    isTyping,
   }: {
     sender_id: string;
     conversation_id: string;
+    isTyping: boolean;
   }) => void;
 }
 
