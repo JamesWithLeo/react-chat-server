@@ -5,7 +5,13 @@ import { IMessage_type } from "../database/database";
 
 interface ServerToClientEvents {
   toClientMessage: (messageData: any) => void;
-  peerTyping: (id: string) => void;
+  peerTyping: ({
+    id,
+    conversation_id,
+  }: {
+    id: string;
+    conversation_id: string;
+  }) => void;
 }
 
 interface ClientToServerEvents {

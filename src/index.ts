@@ -63,8 +63,12 @@ io.on("connection", (socket) => {
   });
 
   socket.on("activeTyping", async (data) => {
-    const { conversation_id } = data;
-    io.to(conversation_id).emit("peerTyping", conversation_id);
+    const { conversation_id, sender_id } = data;
+    console.log("someone is typing:", sender_id);
+    io.to(conversation_id).emit("peerTyping", {
+      conversation_id,
+      id: sender_id,
+    });
   });
   // Handle disconnect event
   socket.on("disconnect", () => {
