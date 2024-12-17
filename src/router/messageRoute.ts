@@ -2,7 +2,7 @@ import { Request, Response, Router } from "express";
 import { pool } from "..";
 import {
   getConversationId,
-  CreateConversation,
+  createConversation,
   InsertMessage,
 } from "../database/database";
 
@@ -35,13 +35,13 @@ router.get("/:id", async (req: Request, res: Response) => {
 router.post("/:id", async (req: Request, res: Response) => {
   let db;
   const senderId = req.params.id;
-  const message = req.body.message;
-  const messageType = req.body.messageType;
+  const content = req.body.message;
+  const contentType = req.body.messageType;
   const recipientId = req.body.recipientId;
   try {
     db = await pool.connect();
     console.log("senderId:", senderId);
-    console.log("message:", message);
+    console.log("message:", content);
     console.log("recipientId", recipientId);
 
     const conversationId = await getConversationId({
@@ -56,14 +56,14 @@ router.post("/:id", async (req: Request, res: Response) => {
     );
 
     if (!conversationId) {
-      const messageResponse = await CreateConversation(
+      const messageResponse = await createConversation({
         db,
-        senderId,
-        recipientId,
-        [],
-        message,
-        messageType,
-      );
+        userId: senderId,
+        peerId: [recipientId],
+        initialContent: content,
+        contentType,
+        conversation_type: "direct",
+      });
       res.status(200).json({ message: messageResponse, ok: 1, isNew: true });
       return;
     } else {
@@ -71,8 +71,8 @@ router.post("/:id", async (req: Request, res: Response) => {
         db,
         conversationId,
         senderId,
-        message,
-        messageType,
+        content,
+        contentType,
       );
       res.status(200).json({ ok: 1, isNew: false, message: messageResponse });
       return;

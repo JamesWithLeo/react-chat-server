@@ -119,47 +119,52 @@ export const getUserConversationId = async ({
 };
 
 // this func will add a new message to new conversation
-export const CreateConversation = async (
-  db: PoolClient,
-  senderId: string,
-  recipientId: string,
-  otherParticipants: string[],
-  initialMessage: string,
-  messageType: IMessage_type,
-) => {
+export const createConversation = async ({
+  db,
+  userId,
+  peerId,
+  initialContent,
+  contentType,
+  conversation_type,
+}: {
+  db: PoolClient;
+  userId: string;
+  peerId: string[];
+  initialContent: string;
+  contentType: IMessage_type;
+  conversation_type: "direct" | "group";
+}) => {
   let insertConversationQuery: string;
-  let conversation_type;
   let conversationQueryResponse: pg.QueryResult<any>;
-  if (!otherParticipants || !otherParticipants.length) {
-    // direct message
+  // direct message
+  if (conversation_type === "direct" && peerId.length === 1) {
     insertConversationQuery = `
     INSERT INTO conversation DEFAULT VALUES RETURNING conversation_id;
     `;
-    conversation_type = "direct";
     conversationQueryResponse = await db.query(insertConversationQuery);
   } else {
     // group message
     insertConversationQuery = `
-    INSERT INTO conversation (conversation_type) VALUES $1 RETURNING conversation_id;
+    INSERT INTO conversation (conversation_type) VALUES ($1) RETURNING conversation_id;
     `;
-    conversation_type = "group";
     conversationQueryResponse = await db.query(insertConversationQuery, [
       conversation_type,
     ]);
   }
 
   const conversation_id = conversationQueryResponse.rows[0].conversation_id;
-
   if (!conversation_id) {
     throw new Error("Cannot create conversation");
   }
-  const participantIds = [senderId, recipientId, ...otherParticipants];
+  const participantIds = [userId, ...peerId];
 
   const insertParticipantsQuery = `
-  INSERT INTO conversation_participants (conversation_id, user_id)
-  VALUES ${participantIds.map((_, index) => `($1, $${index + 2})`).join(", ")};
+    INSERT INTO conversation_participants (conversation_id, user_id)
+    SELECT $1, unnest($2::uuid[])
   `;
-  const participantsParams = [conversation_id, ...participantIds];
+
+  const participantsParams = [conversation_id, participantIds];
+
   const participantsQueryResponse = await db.query(
     insertParticipantsQuery,
     participantsParams,
@@ -173,9 +178,9 @@ export const CreateConversation = async (
 
   const messageQueryResponse = await db.query(insertMessageQuery, [
     conversation_id,
-    senderId,
-    initialMessage,
-    messageType,
+    userId,
+    initialContent,
+    contentType,
   ]);
 
   return messageQueryResponse.rows[0];
@@ -185,9 +190,9 @@ export const CreateConversation = async (
 export const InsertMessage = async (
   db: PoolClient,
   conversation_id: string,
-  senderId: string,
-  message: string,
-  messageType: IMessage_type,
+  userId: string,
+  content: string,
+  contentType: IMessage_type,
 ) => {
   const insertMessageQuery = `
   INSERT INTO messages (conversation_id, sender_id, content, message_type)
@@ -197,22 +202,13 @@ export const InsertMessage = async (
 
   const messageQueryResponse = await db.query(insertMessageQuery, [
     conversation_id,
-    senderId,
-    message,
-    messageType,
+    userId,
+    content,
+    contentType,
   ]);
   console.log(messageQueryResponse.rows);
   return messageQueryResponse.rows[0];
 };
-
-// todo: finish the function UpsertMessage
-export const UpsertMessage = async (
-  db: PoolClient,
-  senderId: string,
-  message: string,
-  messageType: IMessage_type,
-  recipientId: string,
-) => {};
 
 const getGroupConversationId = async ({
   db,
@@ -245,14 +241,14 @@ const getGroupConversationId = async ({
   }
 };
 
-export const QueryConversation = async (db: PoolClient, user_id: string) => {
+export const QueryConversation = async (db: PoolClient, userId: string) => {
   // fetch the convo that user participate
   const convoParticipantQuery = `
   SELECT cp.conversation_id FROM conversation_participants cp
   WHERE user_id = $1 ;
   `;
   const convoParticipantsQueryResponse = await db.query(convoParticipantQuery, [
-    user_id,
+    userId,
   ]);
   if (
     !convoParticipantsQueryResponse ||
@@ -267,62 +263,63 @@ export const QueryConversation = async (db: PoolClient, user_id: string) => {
   console.log(conversation_ids);
 
   // fetch the conversation messages
-  const convoQuery = `
-  SELECT 
-      c.conversation_id, 
-      c.conversation_name, 
-      CASE 
-          WHEN c.conversation_type = 'direct' THEN u.photo_url
-          ELSE c.conversation_thumbnail
-      END AS conversation_thumbnail,
-      c.conversation_type,
-      c.created_at, 
-      c.updated_at,
-      m.message_id AS last_message_id, 
-      m.sender_id AS last_sender_id, 
-      m.content AS last_message_content, 
-      m.created_at AS last_message_created_at,
-      CASE 
-          WHEN c.conversation_type = 'direct' THEN 
-              CONCAT(other_u.first_name, ' ', other_u.last_name) 
-          ELSE NULL 
-      END AS recipient_name,
-      CASE 
-          WHEN c.conversation_type = 'direct' THEN 
-              other_u.id  -- Get the recipient's ID from the other users table
-          ELSE NULL 
-      END AS recipient_id,
-      cp.is_pinned,   -- Get the is_pinned status for the current user
-      cp.is_archived  -- Get the is_archived status for the current user
-  FROM 
-      conversation c
-  LEFT JOIN messages m ON m.message_id = (
-      SELECT message_id 
-      FROM messages 
-      WHERE conversation_id = c.conversation_id 
-      ORDER BY created_at DESC 
-      LIMIT 1
-  )
-  LEFT JOIN conversation_participants cp ON cp.conversation_id = c.conversation_id 
-      AND cp.user_id = $2  -- Filter conversation_participants for the current user
-  LEFT JOIN conversation_participants other_cp ON other_cp.conversation_id = c.conversation_id 
-      AND other_cp.user_id != $2  -- Get the other participant in the conversation
-  LEFT JOIN users u ON u.id = cp.user_id 
-  LEFT JOIN users other_u ON other_u.id = other_cp.user_id  -- Join to get the other user's details
-  WHERE 
-      c.conversation_id = ANY($1::UUID[]) 
-  ORDER BY 
-      c.updated_at DESC;
-`;
 
-  const convoQueryResponse = await db.query(convoQuery, [
-    conversation_ids,
-    user_id,
+  const conversationIdsResponse = await getUserConversationId({ db, userId });
+  // console.log("available convos:", conversationIdsResponse);
+  // get all conversation rows for user
+  const conversationQuery = `
+ SELECT 
+  c.*,
+  JSON_AGG(
+    JSON_BUILD_OBJECT(
+      'id', cp.user_id,
+      'photoUrl', u.photo_url,
+      'lastName', u.last_name,
+      'firstName', u.first_name
+    )
+  ) FILTER (WHERE cp.user_id != $2) AS peers,
+  (
+    SELECT 
+      JSON_BUILD_OBJECT(
+        'content', m.content, 
+        'created_at', m.created_at, 
+        'is_read', m.is_read, 
+        'message_type', m.message_type
+      )
+    FROM 
+      messages m 
+    WHERE 
+      m.conversation_id = c.conversation_id 
+    ORDER BY 
+      m.created_at DESC 
+    LIMIT 1
+  ) AS last_message
+FROM 
+  conversation c
+LEFT JOIN 
+  conversation_participants cp 
+ON 
+  c.conversation_id = cp.conversation_id
+LEFT JOIN 
+  users u 
+ON 
+  cp.user_id = u.id
+WHERE 
+  c.conversation_id = ANY($1::uuid[])
+GROUP BY 
+  c.conversation_id;
+
+`;
+  const conversationIds = conversationIdsResponse.map(
+    (convo) => convo.conversation_id,
+  );
+  const conversationRows = await db.query(conversationQuery, [
+    conversationIds,
+    userId,
   ]);
-  if (!convoQueryResponse || !convoParticipantsQueryResponse.rows.length) {
-    throw new Error("Failed to fetch conversation");
-  }
-  return convoQueryResponse.rows;
+  console.log(conversationRows.rows);
+
+  return conversationRows.rows;
 };
 
 export const PinnedConversation = async ({
