@@ -276,7 +276,8 @@ export const QueryConversation = async (db: PoolClient, userId: string) => {
       'photoUrl', u.photo_url,
       'lastName', u.last_name,
       'firstName', u.first_name,
-      'isOnline', false
+      'isOnline', false,
+				'isTyping',false
     )
   ) FILTER (WHERE cp.user_id != $2) AS peers,
   (
