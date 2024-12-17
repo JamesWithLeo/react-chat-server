@@ -98,19 +98,25 @@ io.on("connection", (socket) => {
     });
   });
 
+  socket.on("joinConvo", ({ conversationIds }) => {
+    console.log("someone joined convo", conversationIds);
+    conversationIds.forEach((conversationId) => {
+      socket.join(conversationId);
+      console.log(`User joined conversation: ${conversationId}`);
+    });
+  });
+
   socket.on("peersStatus", async (data) => {
     let db;
     try {
       db = await pool.connect();
       const { isOnline, sender_id } = data;
-      console.log("someone is active!");
       const conversationRooms = await getUserConversationId({
         userId: sender_id,
         db,
       });
-
       socket
-        .to(conversationRooms)
+        .to(conversationRooms.map((c) => c.conversation_id))
         .emit("peersStatus", { peers: { isOnline, id: sender_id } });
     } finally {
       if (db) db.release();
