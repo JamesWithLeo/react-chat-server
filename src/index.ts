@@ -105,40 +105,26 @@ io.on("connection", (socket) => {
       socket.join(conversationId);
     });
   });
-  socket.on("userCameOnline", async (data) => {
-    if (!onlineUsers.has({ id: data.id })) {
-      onlineUsers.add({ id: data.id });
-    }
 
-    socket.emit("currentOnlinePeers", { peers: Array.from(onlineUsers) });
-    console.log("current Online: ", onlineUsers);
+  socket.on("peersStatus", async (data) => {
+    let db;
+    try {
+      db = await pool.connect();
+      const { isOnline, sender_id } = data;
+      const conversationRooms = await getUserConversationId({
+        userId: sender_id,
+        db,
+      });
+      socket
+        .to(conversationRooms.map((c) => c.conversation_id))
+        .emit("peersStatus", { peers: { isOnline, id: sender_id } });
+    } finally {
+      if (db) db.release();
+    }
   });
-  // socket.on("peersStatus", async (data) => {
-  //   let db;
-  //   try {
-  //     db = await pool.connect();
-  //     const { isOnline, sender_id } = data;
-  //     const conversationRooms = await getUserConversationId({
-  //       userId: sender_id,
-  //       db,
-  //     });
-  //     socket
-  //       .to(conversationRooms.map((c) => c.conversation_id))
-  //       .emit("peersStatus", { peers: { isOnline, id: sender_id } });
-  //   } finally {
-  //     if (db) db.release();
-  //   }
-  //
   // Handle disconnect event
   socket.on("disconnect", () => {
     console.log(`Disconnected: ${socket.id}`);
-    socket.on("userCameOffline", (data) => {
-      onlineUsers.delete({ id: data.id });
-      // socket.broadcast.emit("peersStatus", {
-      //   peers: { id: data.id, isOnline: false },
-      // });
-      console.log("Updated online users:", Array.from(onlineUsers));
-    });
   });
 });
 
