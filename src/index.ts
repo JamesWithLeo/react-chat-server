@@ -108,9 +108,9 @@ io.on("connection", (socket) => {
   });
   socket.on("userCameOnline", async (data) => {
     onlineUsers.add(data);
-    socket.broadcast.emit("peersStatus", {
-      peers: { id: data.id, isOnline: true },
-    });
+    // socket.broadcast.emit("peersStatus", {
+    //   peers: { id: data.id, isOnline: true },
+    // });
     socket.emit("currentOnlinePeers", { peers: Array.from(onlineUsers) });
   });
   // socket.on("peersStatus", async (data) => {
@@ -134,9 +134,9 @@ io.on("connection", (socket) => {
     console.log(`Disconnected: ${socket.id}`);
     socket.on("userCameOffline", (data) => {
       onlineUsers.delete({ id: data.id });
-      socket.broadcast.emit("peersStatus", {
-        peers: { id: data.id, isOnline: false },
-      });
+      // socket.broadcast.emit("peersStatus", {
+      //   peers: { id: data.id, isOnline: false },
+      // });
     });
     console.log("Updated online users:", Array.from(onlineUsers));
   });
