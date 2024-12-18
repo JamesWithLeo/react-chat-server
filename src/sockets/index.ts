@@ -15,11 +15,15 @@ interface ServerToClientEvents {
     isTyping: boolean;
   }) => void;
 
-  peersStatus: (data: { peers: { id: string; isOnline: boolean } }) => void;
+  peersStatus: (data: {
+    peers: { id: string; isOnline: boolean };
+    onlinePeers: string[];
+  }) => void;
   newConversation: (convoData: {
     conversation_type: "direct" | "group";
     conversation_id: string;
   }) => void;
+  currentOnlinePeers: (ids: string[]) => void;
 }
 
 interface ClientToServerEvents {

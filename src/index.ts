@@ -42,8 +42,15 @@ io.on("connection", (socket) => {
   // Handle an event sent by the client
 
   socket.on("joinMessage", async (conversation) => {
-    console.log("An user join chat", conversation);
+    console.log("An user join chat: ", conversation);
     socket.join(conversation.conversationId);
+  });
+
+  socket.on("joinConvo", ({ conversationIds }) => {
+    // console.log("someone join this:", conversationIds);
+    conversationIds.forEach((conversationId) => {
+      socket.join(conversationId);
+    });
   });
 
   socket.on("createMessage", async (messageData) => {
@@ -99,16 +106,11 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("joinConvo", ({ conversationIds }) => {
-    console.log("someone join convo", conversationIds);
-    conversationIds.forEach((conversationId) => {
-      socket.join(conversationId);
-    });
-  });
   socket.on("userCameOnline", (data) => {
     onlineUsers.add(data.id);
     console.log("All current online users:", onlineUsers);
   });
+
   socket.on("peersStatus", async (data) => {
     let db;
     try {
@@ -118,9 +120,13 @@ io.on("connection", (socket) => {
         userId: sender_id,
         db,
       });
+      console.log(onlineUsers);
       socket
         .to(conversationRooms.map((c) => c.conversation_id))
-        .emit("peersStatus", { peers: { isOnline, id: sender_id } });
+        .emit("peersStatus", {
+          peers: { isOnline, id: sender_id },
+          onlinePeers: Array.from(onlineUsers),
+        });
     } finally {
       if (db) db.release();
     }
