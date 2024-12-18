@@ -14,6 +14,8 @@ interface ServerToClientEvents {
     conversation_id: string;
     isTyping: boolean;
   }) => void;
+
+  currentOnlinePeers: ({ peers }: { peers: { id: string }[] }) => void;
   peersStatus: (data: { peers: { id: string; isOnline: boolean } }) => void;
   newConversation: (convoData: {
     conversation_type: "direct" | "group";
@@ -47,13 +49,15 @@ interface ClientToServerEvents {
   }) => void;
 
   joinConvo: ({ conversationIds }: { conversationIds: string[] }) => void;
-  peersStatus: ({
-    sender_id,
-    isOnline,
-  }: {
-    sender_id: string;
-    isOnline: boolean;
-  }) => void;
+  userCameOnline: ({ id }: { id: string }) => void;
+  userCameOffline: ({ id }: { id: string }) => void;
+  // peersStatus: ({
+  //   sender_id,
+  //   isOnline,
+  // }: {
+  //   sender_id: string;
+  //   isOnline: boolean;
+  // }) => void;
 }
 
 interface InterServerEvents {

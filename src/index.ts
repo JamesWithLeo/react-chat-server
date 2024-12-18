@@ -35,13 +35,14 @@ io.engine.on("connection_error", (err) => {
   console.log(err.context); // some additional error context
 });
 
+let onlineUsers = new Set<{ id: string }>();
 // connection is established between client and server .
 io.on("connection", (socket) => {
   console.log(`New connection: ${socket.id}`);
   // Handle an event sent by the client
 
   socket.on("joinMessage", async (conversation) => {
-    console.log("An user join conversation");
+    console.log("An user join chat", conversation);
     socket.join(conversation.conversationId);
   });
 
@@ -99,32 +100,45 @@ io.on("connection", (socket) => {
   });
 
   socket.on("joinConvo", ({ conversationIds }) => {
-    console.log("someone joined convo", conversationIds);
+    console.log("someone join convo", conversationIds);
     conversationIds.forEach((conversationId) => {
       socket.join(conversationId);
-      console.log(`User joined conversation: ${conversationId}`);
+      console.log(`An user joined convo: ${conversationId}`);
     });
   });
-
-  socket.on("peersStatus", async (data) => {
-    let db;
-    try {
-      db = await pool.connect();
-      const { isOnline, sender_id } = data;
-      const conversationRooms = await getUserConversationId({
-        userId: sender_id,
-        db,
-      });
-      socket
-        .to(conversationRooms.map((c) => c.conversation_id))
-        .emit("peersStatus", { peers: { isOnline, id: sender_id } });
-    } finally {
-      if (db) db.release();
-    }
+  socket.on("userCameOnline", async (data) => {
+    onlineUsers.add(data);
+    socket.broadcast.emit("peersStatus", {
+      peers: { id: data.id, isOnline: true },
+    });
+    socket.emit("currentOnlinePeers", { peers: Array.from(onlineUsers) });
   });
+  // socket.on("peersStatus", async (data) => {
+  //   let db;
+  //   try {
+  //     db = await pool.connect();
+  //     const { isOnline, sender_id } = data;
+  //     const conversationRooms = await getUserConversationId({
+  //       userId: sender_id,
+  //       db,
+  //     });
+  //     socket
+  //       .to(conversationRooms.map((c) => c.conversation_id))
+  //       .emit("peersStatus", { peers: { isOnline, id: sender_id } });
+  //   } finally {
+  //     if (db) db.release();
+  //   }
+  //
   // Handle disconnect event
   socket.on("disconnect", () => {
     console.log(`Disconnected: ${socket.id}`);
+    socket.on("userCameOffline", (data) => {
+      onlineUsers.delete({ id: data.id });
+      socket.broadcast.emit("peersStatus", {
+        peers: { id: data.id, isOnline: false },
+      });
+    });
+    console.log("Updated online users:", Array.from(onlineUsers));
   });
 });
 
