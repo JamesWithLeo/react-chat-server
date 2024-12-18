@@ -109,7 +109,7 @@ io.on("connection", (socket) => {
   socket.on("userCameOnline", (data) => {
     onlineUsers.add(data.id);
     console.log("All current online users:", onlineUsers);
-    socket.broadcast.emit("currentOnlinePeers", Array.from(onlineUsers));
+    socket.emit("currentOnlinePeers", Array.from(onlineUsers));
   });
 
   // socket.on("peersStatus", async (data) => {
