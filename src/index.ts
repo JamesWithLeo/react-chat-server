@@ -103,7 +103,6 @@ io.on("connection", (socket) => {
     console.log("someone join convo", conversationIds);
     conversationIds.forEach((conversationId) => {
       socket.join(conversationId);
-      console.log(`An user joined convo: ${conversationId}`);
     });
   });
   socket.on("userCameOnline", async (data) => {
@@ -112,6 +111,7 @@ io.on("connection", (socket) => {
     }
 
     socket.emit("currentOnlinePeers", { peers: Array.from(onlineUsers) });
+    console.log("current Online: ", onlineUsers);
   });
   // socket.on("peersStatus", async (data) => {
   //   let db;
@@ -137,8 +137,8 @@ io.on("connection", (socket) => {
       // socket.broadcast.emit("peersStatus", {
       //   peers: { id: data.id, isOnline: false },
       // });
+      console.log("Updated online users:", Array.from(onlineUsers));
     });
-    console.log("Updated online users:", Array.from(onlineUsers));
   });
 });
 
