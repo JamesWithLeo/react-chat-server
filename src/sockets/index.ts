@@ -55,6 +55,7 @@ interface ClientToServerEvents {
     sender_id: string;
     isOnline: boolean;
   }) => void;
+  userCameOnline: ({ id }: { id: string }) => void;
 }
 
 interface InterServerEvents {

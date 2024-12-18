@@ -35,7 +35,7 @@ io.engine.on("connection_error", (err) => {
   console.log(err.context); // some additional error context
 });
 
-let onlineUsers = new Set<{ id: string }>();
+let onlineUsers = new Set<string>();
 // connection is established between client and server .
 io.on("connection", (socket) => {
   console.log(`New connection: ${socket.id}`);
@@ -105,7 +105,10 @@ io.on("connection", (socket) => {
       socket.join(conversationId);
     });
   });
-
+  socket.on("userCameOnline", (data) => {
+    onlineUsers.add(data.id);
+    console.log("All current online users:", onlineUsers);
+  });
   socket.on("peersStatus", async (data) => {
     let db;
     try {
