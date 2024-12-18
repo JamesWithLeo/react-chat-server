@@ -107,10 +107,10 @@ io.on("connection", (socket) => {
     });
   });
   socket.on("userCameOnline", async (data) => {
-    onlineUsers.add(data);
-    // socket.broadcast.emit("peersStatus", {
-    //   peers: { id: data.id, isOnline: true },
-    // });
+    if (!onlineUsers.has({ id: data.id })) {
+      onlineUsers.add({ id: data.id });
+    }
+
     socket.emit("currentOnlinePeers", { peers: Array.from(onlineUsers) });
   });
   // socket.on("peersStatus", async (data) => {
