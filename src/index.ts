@@ -42,12 +42,10 @@ io.on("connection", (socket) => {
   // Handle an event sent by the client
 
   socket.on("joinMessage", async (conversation) => {
-    console.log("An user join chat: ", conversation);
     socket.join(conversation.conversationId);
   });
 
   socket.on("joinConvo", ({ conversationIds }) => {
-    // console.log("someone join this:", conversationIds);
     conversationIds.forEach((conversationId) => {
       socket.join(conversationId);
     });
@@ -108,30 +106,14 @@ io.on("connection", (socket) => {
 
   socket.on("userCameOnline", (data) => {
     onlineUsers.add(data.id);
-    console.log("All current online users:", onlineUsers);
-    socket.emit("currentOnlinePeers", Array.from(onlineUsers));
+    socket.emit("currentOnlinePeers", Array.from(onlineUsers.values()));
   });
 
-  // socket.on("peersStatus", async (data) => {
-  //   let db;
-  //   try {
-  //     db = await pool.connect();
-  //     const { isOnline, sender_id } = data;
-  //     const conversationRooms = await getUserConversationId({
-  //       userId: sender_id,
-  //       db,
-  //     });
-  //     console.log(onlineUsers);
-  //     socket
-  //       .to(conversationRooms.map((c) => c.conversation_id))
-  //       .emit("peersStatus", {
-  //         peers: { isOnline, id: sender_id },
-  //         onlinePeers: Array.from(onlineUsers),
-  //       });
-  //   } finally {
-  //     if (db) db.release();
-  //   }
-  // });
+  socket.on("userCameOffline", (data) => {
+    onlineUsers.delete(data.id);
+    socket.emit("currentOnlinePeers", Array.from(onlineUsers.values()));
+  });
+
   // Handle disconnect event
   socket.on("disconnect", () => {
     console.log(`Disconnected: ${socket.id}`);
