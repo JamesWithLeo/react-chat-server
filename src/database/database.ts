@@ -260,7 +260,6 @@ export const QueryConversation = async (db: PoolClient, userId: string) => {
   const conversation_ids = convoParticipantsQueryResponse.rows.map(
     (cp) => cp.conversation_id,
   );
-  console.log(conversation_ids);
 
   // fetch the conversation messages
 
@@ -319,7 +318,6 @@ GROUP BY
     conversationIds,
     userId,
   ]);
-  console.log(conversationRows.rows);
 
   return conversationRows.rows;
 };
