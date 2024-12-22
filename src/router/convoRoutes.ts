@@ -2,6 +2,7 @@ import { Request, Response, Router } from "express";
 import { pool } from "..";
 import {
   ArchiveConversation,
+  getConversationId,
   PinnedConversation,
   QueryConversation,
 } from "../database/database";
@@ -18,6 +19,22 @@ router.get("/:id", async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ ok: 0, error });
+  } finally {
+    if (db) db.release();
+  }
+});
+router.post("/:id/getId", async (req: Request, res: Response) => {
+  const userId = req.params.id;
+  const peerId = req.body.peerId;
+  let db;
+  try {
+    db = await pool.connect();
+    const conversationId = await getConversationId({
+      db,
+      senderId: userId,
+      recipientId: peerId,
+    });
+    res.status(200).json({ ok: 1, conversationId });
   } finally {
     if (db) db.release();
   }

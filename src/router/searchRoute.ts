@@ -1,6 +1,6 @@
 import { Request, Response, Router } from "express";
 import { pool } from "..";
-import { QueryUsers } from "../database/database";
+import { QueryConversation, QueryUsers } from "../database/database";
 
 const router = Router();
 
@@ -28,13 +28,13 @@ router.get("/:id", async (req: Request, res: Response) => {
           limit,
           offset,
         );
-        if (!PeopleAllScope || !PeopleAllScope.rowCount) {
-          res.status(200).json({ ok: 1, users: null, chats: null });
-          return;
-        }
-        res
-          .status(200)
-          .json({ ok: 1, users: PeopleAllScope.rows, chats: null });
+        const ChatAllScope = await QueryConversation(db, user_id);
+
+        res.status(200).json({
+          ok: 1,
+          users: PeopleAllScope ?? null,
+          chats: ChatAllScope ?? null,
+        });
         return;
 
       case "people":
@@ -45,26 +45,21 @@ router.get("/:id", async (req: Request, res: Response) => {
           limit,
           offset,
         );
-        if (!peopleScope || !peopleScope.rowCount) {
+        if (!peopleScope) {
           res.status(200).json({ ok: 1, user: null, chats: null });
           return;
         }
-        res.status(200).json({ ok: 1, users: peopleScope.rows, chats: null });
+        res.status(200).json({ ok: 1, users: peopleScope, chats: [] });
         return;
 
       case "chats":
-        // const people = await queryUsers(
-        //   db,
-        //   searchTerms,
-        //   [user_id],
-        //   limit,
-        //   offset,
-        // );
-        // if (!people || !people.rowCount) {
-        //   res.status(401).send("Cannot find recommendation.");
-        //   return;
-        // }
-        res.status(200).json({ ok: 1, users: null, chats: null });
+        const chatScope = await QueryConversation(db, user_id);
+
+        if (!chatScope) {
+          res.status(401).send("Cannot find recommendation.");
+          return;
+        }
+        res.status(200).json({ ok: 1, users: [], chats: chatScope });
         return;
       default:
         throw new Error(

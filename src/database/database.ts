@@ -51,12 +51,20 @@ export const QueryUsers = async (
 
   // Build the SQL query
   const peopleSearchQuery = `
-    SELECT id, first_name, last_name, email, photo_url, phone_number FROM users 
+      SELECT 
+        u.id AS id, 
+        u.first_name AS "firstName", 
+        u.last_name AS "lastName", 
+        u.email AS "email", 
+        u.photo_url AS "photoUrl", 
+        u.phone_number AS "phoneNumber" 
+    FROM users u
     ${conditions || excludedIds.length > 0 ? " WHERE " : ""}
     ${conditions ? ` (${conditions})` : ""}
-    ${conditions && excludedIds.length > 0 ? " AND " : ""}  
-    ${excludedIds.length > 0 ? `id NOT IN (${excludedIds.map((_, index) => `$${finalValues.length + index + 1}`).join(", ")})` : ""}
+    ${conditions && excludedIds.length > 0 ? " AND " : ""}
+    ${excludedIds.length > 0 ? `u.id NOT IN (${excludedIds.map((_, index) => `$${finalValues.length + index + 1}`).join(", ")})` : ""}
     LIMIT $${finalValues.length + excludedIds.length + 1} OFFSET $${finalValues.length + excludedIds.length + 2};
+
   `;
 
   finalValues.push(...excludedIds);
@@ -68,9 +76,10 @@ export const QueryUsers = async (
   console.log("values:", finalValues);
 
   const response = await db.query(peopleSearchQuery, finalValues);
-  return response;
+  return response.rows;
 };
 
+// if conversation ID doesn't exist, it will create one
 export const getConversationId = async ({
   db,
   senderId,
@@ -96,7 +105,29 @@ export const getConversationId = async ({
   if (response && response.rows.length) {
     return response.rows[0].conversation_id;
   } else {
-    return null;
+    const insertConversationQuery = `
+   WITH new_conversation AS (
+        INSERT INTO conversation DEFAULT VALUES 
+        RETURNING conversation_id
+    )
+    INSERT INTO conversation_participants (conversation_id, user_id)
+    SELECT new_conversation.conversation_id, unnest($1::uuid[])
+    FROM new_conversation
+    RETURNING conversation_id;
+    
+    `;
+    const participantIds = [senderId, recipientId];
+    const conversationQueryResponse = await db.query(insertConversationQuery, [
+      participantIds,
+    ]);
+    console.log("new conversation:", conversationQueryResponse.rows);
+    const conversation_id = conversationQueryResponse.rows[0].conversation_id;
+
+    if (!conversation_id) {
+      throw new Error("Cannot create conversation");
+    } else {
+      return conversation_id;
+    }
   }
 };
 

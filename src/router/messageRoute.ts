@@ -40,9 +40,6 @@ router.post("/:id", async (req: Request, res: Response) => {
   const recipientId = req.body.recipientId;
   try {
     db = await pool.connect();
-    console.log("senderId:", senderId);
-    console.log("message:", content);
-    console.log("recipientId", recipientId);
 
     const conversationId = await getConversationId({
       db,
@@ -56,7 +53,7 @@ router.post("/:id", async (req: Request, res: Response) => {
     );
 
     if (!conversationId) {
-      const messageResponse = await createConversation({
+      const createConvoResponse = await createConversation({
         db,
         userId: senderId,
         peerId: [recipientId],
@@ -64,7 +61,11 @@ router.post("/:id", async (req: Request, res: Response) => {
         contentType,
         conversation_type: "direct",
       });
-      res.status(200).json({ message: messageResponse, ok: 1, isNew: true });
+      res.status(200).json({
+        message: createConvoResponse,
+        ok: 1,
+        isNew: true,
+      });
       return;
     } else {
       const messageResponse = await InsertMessage(
