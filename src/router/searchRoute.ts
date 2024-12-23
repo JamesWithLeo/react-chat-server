@@ -1,15 +1,19 @@
 import { Request, Response, Router } from "express";
 import { pool } from "..";
-import { QueryConversation, QueryUsers } from "../database/database";
+import {
+  QueryConversation,
+  QueryMessage,
+  QueryUsers,
+} from "../database/database";
 
 const router = Router();
 
 router.get("/:id", async (req: Request, res: Response) => {
   const query = (req.query.query as string) ?? " ";
   const scope = (req.query.scope as string) ?? "all";
-  const user_id = req.params.id;
+  const userId = req.params.id;
   const searchTerms = query.split(" ").filter((name) => name);
-  console.log(`$ ${user_id} is...`);
+  console.log(`$ ${userId} is...`);
   console.log("- Searching for:", searchTerms);
   console.log("- With scope of: ", scope);
 
@@ -28,7 +32,15 @@ router.get("/:id", async (req: Request, res: Response) => {
           limit,
           offset,
         );
-        const ChatAllScope = await QueryConversation(db, user_id);
+
+        const ChatAllScope =
+          searchTerms && searchTerms.length
+            ? await QueryMessage({
+                db,
+                userId,
+                searchTerms: searchTerms.join(" "),
+              })
+            : await QueryConversation(db, userId);
 
         res.status(200).json({
           ok: 1,
@@ -41,7 +53,7 @@ router.get("/:id", async (req: Request, res: Response) => {
         const peopleScope = await QueryUsers(
           db,
           searchTerms,
-          [user_id],
+          [userId],
           limit,
           offset,
         );
@@ -53,7 +65,7 @@ router.get("/:id", async (req: Request, res: Response) => {
         return;
 
       case "chats":
-        const chatScope = await QueryConversation(db, user_id);
+        const chatScope = await QueryConversation(db, userId);
 
         if (!chatScope) {
           res.status(401).send("Cannot find recommendation.");

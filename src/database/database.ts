@@ -72,8 +72,8 @@ export const QueryUsers = async (
   finalValues.push(limit, offset);
 
   // Execute the query
-  console.log("query:", peopleSearchQuery);
-  console.log("values:", finalValues);
+  // console.log("query:", peopleSearchQuery);
+  // console.log("values:", finalValues);
 
   const response = await db.query(peopleSearchQuery, finalValues);
   return response.rows;
@@ -351,6 +351,76 @@ GROUP BY
   ]);
 
   return conversationRows.rows;
+};
+export const QueryMessage = async ({
+  db,
+  userId,
+  searchTerms,
+}: {
+  db: PoolClient;
+  userId: string;
+  searchTerms: string;
+}) => {
+  const QueryMessage = `
+  SELECT 
+    c.*,
+    COALESCE(
+      JSON_AGG(
+        JSON_BUILD_OBJECT(
+          'id', cp.user_id,
+          'photoUrl', u.photo_url,
+          'lastName', u.last_name,
+          'firstName', u.first_name,
+          'isOnline', false,
+          'isTyping', false
+        )
+      ) FILTER (WHERE cp.user_id != $1), 
+      '[]'::json -- Ensure peers is an empty array if no other participants are found
+    ) AS peers,
+    (
+      SELECT 
+        JSON_BUILD_OBJECT(
+          'content', m.content, 
+          'created_at', m.created_at, 
+          'is_read', m.is_read, 
+          'message_type', m.message_type
+        )
+      FROM 
+        messages m 
+      WHERE 
+        m.conversation_id = c.conversation_id 
+        AND m.content ILIKE $2
+        AND TRIM(m.content) != '' -- Exclude empty or whitespace-only messages
+      ORDER BY 
+        m.created_at DESC 
+      LIMIT 1
+    ) AS last_message
+  FROM 
+    conversation c
+  LEFT JOIN 
+    conversation_participants cp 
+  ON 
+    c.conversation_id = cp.conversation_id
+  LEFT JOIN 
+    users u 
+  ON 
+    cp.user_id = u.id
+  WHERE 
+    c.conversation_id IN (
+      SELECT conversation_id 
+      FROM conversation_participants 
+      WHERE user_id = $1 -- Ensure the user is a participant in the conversation
+    )
+  GROUP BY 
+    c.conversation_id;
+`;
+
+  const messageQueryResponse = await db.query(QueryMessage, [
+    userId,
+    `%${searchTerms}%`,
+  ]);
+  console.log("message query response: ", messageQueryResponse.rows);
+  return messageQueryResponse.rows;
 };
 
 export const PinnedConversation = async ({
