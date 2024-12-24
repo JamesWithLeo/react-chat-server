@@ -325,7 +325,9 @@ export const QueryConversation = async (db: PoolClient, userId: string) => {
     ORDER BY 
       m.created_at DESC 
     LIMIT 1
-  ) AS last_message
+  ) AS last_message,
+   cp_current.is_archived,
+   cp_current.is_pinned
 FROM 
   conversation c
 LEFT JOIN 
@@ -336,12 +338,17 @@ LEFT JOIN
   users u 
 ON 
   cp.user_id = u.id
+LEFT JOIN 
+  conversation_participants cp_current 
+ON 
+  c.conversation_id = cp_current.conversation_id AND cp_current.user_id = $2
 WHERE 
   c.conversation_id = ANY($1::uuid[])
 GROUP BY 
-  c.conversation_id;
+  c.conversation_id, cp_current.is_archived, cp_current.is_pinned;
 
 `;
+
   const conversationIds = conversationIdsResponse.map(
     (convo) => convo.conversation_id,
   );

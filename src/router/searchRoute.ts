@@ -24,7 +24,32 @@ router.get("/:id", async (req: Request, res: Response) => {
     db = await pool.connect();
 
     switch (scope) {
-      case "all":
+      case "people":
+        const peopleScope = await QueryUsers(
+          db,
+          searchTerms,
+          [userId],
+          limit,
+          offset,
+        );
+
+        res
+          .status(200)
+          .json({ ok: 1, users: peopleScope ?? [], chats: [], groups: [] });
+        return;
+
+      case "chats":
+        const chatScope = await QueryConversation(db, userId);
+
+        res
+          .status(200)
+          .json({ ok: 1, users: [], chats: chatScope ?? [], groups: [] });
+        return;
+
+      case "groups":
+        res.status(200).json({ ok: 1, users: [], chats: [], group: [] });
+        return;
+      default: // all
         const PeopleAllScope = await QueryUsers(
           db,
           searchTerms,
@@ -41,42 +66,14 @@ router.get("/:id", async (req: Request, res: Response) => {
                 searchTerms: searchTerms.join(" "),
               })
             : await QueryConversation(db, userId);
-
+        const GroupAllScope = [];
         res.status(200).json({
           ok: 1,
-          users: PeopleAllScope ?? null,
-          chats: ChatAllScope ?? null,
+          users: PeopleAllScope ?? [],
+          chats: ChatAllScope ?? [],
+          groups: [],
         });
         return;
-
-      case "people":
-        const peopleScope = await QueryUsers(
-          db,
-          searchTerms,
-          [userId],
-          limit,
-          offset,
-        );
-        if (!peopleScope) {
-          res.status(200).json({ ok: 1, user: null, chats: null });
-          return;
-        }
-        res.status(200).json({ ok: 1, users: peopleScope, chats: [] });
-        return;
-
-      case "chats":
-        const chatScope = await QueryConversation(db, userId);
-
-        if (!chatScope) {
-          res.status(401).send("Cannot find recommendation.");
-          return;
-        }
-        res.status(200).json({ ok: 1, users: [], chats: chatScope });
-        return;
-      default:
-        throw new Error(
-          `${scope} is invalid scope. select from ("all", "people", "chats") `,
-        );
     }
   } catch (error) {
     console.error(error);
