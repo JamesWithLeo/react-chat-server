@@ -468,7 +468,7 @@ export const ArchiveConversation = async ({
   conversationId,
 }: {
   db: PoolClient;
-  isArchived: string;
+  isArchived: boolean;
   userId: string;
   conversationId: string;
 }) => {
@@ -479,14 +479,14 @@ export const ArchiveConversation = async ({
   RETURNING is_archived;
   `;
 
-  const pinResponse = await db.query(pinQuery, [
+  const archivedResponse = await db.query(pinQuery, [
     isArchived,
     userId,
     conversationId,
   ]);
 
-  if (pinResponse && pinResponse.rows[0]) {
-    return !!pinResponse.rows[0].is_archived;
+  if (archivedResponse && archivedResponse.rows[0]) {
+    return !!archivedResponse.rows[0].is_archived;
   } else {
     return false;
   }
