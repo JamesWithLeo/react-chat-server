@@ -10,6 +10,7 @@ import initiateDbPool, {
   getConversationId,
   getUserConversationId,
   InsertMessage,
+  SeenMessage,
 } from "./database/database";
 import { createServer } from "http";
 
@@ -88,6 +89,33 @@ io.on("connection", (socket) => {
 
         // send response to the room
         io.to(conversation_id).emit("toClientMessage", messageResponse);
+      }
+    } finally {
+      if (db) db.release();
+    }
+  });
+  socket.on("messageSeen", async (data) => {
+    const { messageId, userId, conversationId, seenAt } = data;
+    let db;
+    try {
+      db = await pool.connect();
+      const seenResponse = await SeenMessage({
+        db,
+        messageId,
+        userId,
+        conversationId,
+        seenAt,
+      });
+      console.log("message seen response: ", seenResponse);
+      if (seenResponse && seenResponse.length) {
+        const { seen_at, user_id, conversation_id, message_id } =
+          seenResponse[0];
+        socket.broadcast.to(conversationId).emit("currentSeen", {
+          message_id,
+          user_id,
+          seen_at,
+          conversation_id,
+        });
       }
     } finally {
       if (db) db.release();

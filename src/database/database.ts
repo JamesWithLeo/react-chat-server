@@ -303,11 +303,11 @@ export const QueryConversation = async (db: PoolClient, userId: string) => {
   JSON_AGG(
     JSON_BUILD_OBJECT(
       'id', cp.user_id,
-      'photoUrl', u.photo_url,
-      'lastName', u.last_name,
+      'photoUrl',  u.photo_url,
+      'lastName',  u.last_name,
       'firstName', u.first_name,
-      'isOnline', false,
-				'isTyping',false
+      'isOnline',  false,
+			'isTyping',  false
     )
   ) FILTER (WHERE cp.user_id != $2) AS peers,
   (
@@ -315,8 +315,8 @@ export const QueryConversation = async (db: PoolClient, userId: string) => {
       JSON_BUILD_OBJECT(
         'content', m.content, 
         'created_at', m.created_at, 
-        'is_read', m.is_read, 
         'message_type', m.message_type
+      
       )
     FROM 
       messages m 
@@ -359,6 +359,7 @@ GROUP BY
 
   return conversationRows.rows;
 };
+
 export const QueryMessage = async ({
   db,
   userId,
@@ -490,4 +491,35 @@ export const ArchiveConversation = async ({
   } else {
     return false;
   }
+};
+
+export const SeenMessage = async ({
+  db,
+  conversationId,
+  messageId,
+  userId,
+  seenAt,
+}: {
+  db: PoolClient;
+  conversationId: string;
+  messageId: string;
+  userId: string;
+  seenAt: string;
+}) => {
+  const query = `
+    INSERT INTO last_seen (user_id, conversation_id, message_id, seen_at)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (user_id, conversation_id) 
+    DO UPDATE SET 
+    message_id = EXCLUDED.message_id,
+    seen_at = EXCLUDED.seen_at
+    RETURNING *;
+  `;
+  const response = await db.query(query, [
+    userId,
+    conversationId,
+    messageId,
+    seenAt,
+  ]);
+  return response.rows;
 };
