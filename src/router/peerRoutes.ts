@@ -30,7 +30,7 @@ JOIN
     ON conversation_participants.user_id = users.id
 LEFT JOIN 
     last_seen 
-    ON last_seen.user_id = users.id -- Join with condition
+    ON last_seen.user_id = users.id AND last_seen.conversation_id = $1 -- Join with condition
 WHERE 
     conversation_participants.conversation_id = $1
     AND users.id != $2;
