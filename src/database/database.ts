@@ -390,7 +390,6 @@ export const QueryMessage = async ({
         JSON_BUILD_OBJECT(
           'content', m.content, 
           'created_at', m.created_at, 
-          'is_read', m.is_read, 
           'message_type', m.message_type
         )
       FROM 
