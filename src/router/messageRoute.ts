@@ -2,7 +2,7 @@ import { Request, Response, Router } from "express";
 import { pool } from "..";
 import {
   getConversationId,
-  createConversation,
+  createConversationWithMessage,
   InsertMessage,
 } from "../database/database";
 
@@ -53,7 +53,7 @@ router.post("/:id", async (req: Request, res: Response) => {
     );
 
     if (!conversationId) {
-      const createConvoResponse = await createConversation({
+      const createConvoResponse = await createConversationWithMessage({
         db,
         userId: senderId,
         peerId: [recipientId],

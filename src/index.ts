@@ -6,7 +6,7 @@ const port = process.env.PORT ?? 5000;
 import express, { json, Request, Response } from "express";
 import cors from "cors";
 import initiateDbPool, {
-  createConversation,
+  createConversationWithMessage,
   getConversationId,
   getUserConversationId,
   InsertMessage,
@@ -58,7 +58,7 @@ io.on("connection", (socket) => {
     let db;
     try {
       db = await pool.connect();
-      const messages = await createConversation({
+      const messages = await createConversationWithMessage({
         db,
         userId,
         peerId,

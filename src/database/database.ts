@@ -22,6 +22,7 @@ const initiatePool = () => {
     port: JSON.parse(process.env.POSTGRES_PORT!),
   });
 };
+export type IConversationType = "direct" | "group";
 
 export default initiatePool;
 
@@ -150,7 +151,7 @@ export const getUserConversationId = async ({
 };
 
 // this func will add a new message to new conversation
-export const createConversation = async ({
+export const createConversationWithMessage = async ({
   db,
   userId,
   peerId,
@@ -167,7 +168,6 @@ export const createConversation = async ({
 }) => {
   let insertConversationQuery: string;
   let conversationQueryResponse: pg.QueryResult<any>;
-  // direct message
   if (conversation_type === "direct" && peerId.length === 1) {
     insertConversationQuery = `
     INSERT INTO conversation DEFAULT VALUES RETURNING conversation_id;
@@ -521,4 +521,45 @@ export const SeenMessage = async ({
     seenAt,
   ]);
   return response.rows;
+};
+
+export const createConversation = async ({
+  db,
+  userId,
+  peerId,
+  conversationName,
+  conversationType,
+}: {
+  db: PoolClient;
+  userId: string;
+  peerId: string[];
+  conversationName: string;
+  conversationType: "direct" | "group";
+}) => {
+  if (conversationType === "direct" && peerId.length === 1) {
+    // direct
+  } else if (
+    conversationType === "group" &&
+    Array.isArray(peerId) &&
+    peerId.length > 1
+  ) {
+    const insertConversationAndParticipants = `
+      WITH inserted_conversation AS (
+        INSERT INTO conversation (conversation_name, conversation_type) 
+        VALUES ($1, $2) 
+        RETURNING conversation_id
+      )
+      INSERT INTO conversation_participants (conversation_id, user_id)
+      SELECT inserted_conversation.conversation_id, unnest($3::uuid[])
+      FROM inserted_conversation;
+        `;
+
+    const conversationQueryResponse = await db.query(
+      insertConversationAndParticipants,
+      [conversationName, conversationType, [userId, ...peerId]],
+    );
+    console.log(conversationQueryResponse.rows);
+  } else {
+    // fialed
+  }
 };

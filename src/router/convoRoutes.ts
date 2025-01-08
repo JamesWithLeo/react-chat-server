@@ -2,7 +2,10 @@ import { Request, Response, Router } from "express";
 import { pool } from "..";
 import {
   ArchiveConversation,
+  createConversation,
+  createConversationWithMessage,
   getConversationId,
+  IConversationType,
   PinnedConversation,
   QueryConversation,
 } from "../database/database";
@@ -19,6 +22,45 @@ router.get("/:id", async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ ok: 0, error });
+  } finally {
+    if (db) db.release();
+  }
+});
+router.get("/:id/:convo_id", async (req: Request, res: Response) => {
+  const userId = req.params.id;
+  const convoId = req.params.convo_id;
+  let db;
+  try {
+    db = await pool.connect();
+    const convoQuery = `
+    SELECT * FROM conversation WHERE conversation_id = $1 
+    `;
+    const conversation = await db.query(convoQuery, [convoId]);
+    res.status(200).json({ ok: 1, info: conversation.rows[0] });
+  } finally {
+    if (db) db.release();
+  }
+});
+router.post("/:id", async (req: Request, res: Response) => {
+  const userId = req.params.id as string;
+  const peerId = req.body.members as string[];
+  const conversationName = req.body.title as string;
+  const conversationType = req.body.conversationType as IConversationType;
+  let db;
+
+  try {
+    db = await pool.connect();
+    if (conversationType !== "direct" && conversationType !== "group") {
+      // invalid
+    }
+    const response = await createConversation({
+      db,
+      userId,
+      peerId,
+      conversationName,
+      conversationType,
+    });
+    res.status(200).json({ ok: 1, response });
   } finally {
     if (db) db.release();
   }
