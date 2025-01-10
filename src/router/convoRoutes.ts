@@ -17,7 +17,7 @@ router.get("/:id", async (req: Request, res: Response) => {
   let db;
   try {
     db = await pool.connect();
-    const conversation = await QueryConversation(db, userId);
+    const conversation = await QueryConversation(db, userId, "all");
     res.status(200).json({ ok: 1, conversation });
   } catch (error) {
     console.error(error);

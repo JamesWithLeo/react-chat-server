@@ -134,7 +134,10 @@ io.on("connection", (socket) => {
 
   socket.on("userCameOnline", (data) => {
     onlineUsers.add(data.id);
-    socket.emit("currentOnlinePeers", Array.from(onlineUsers.values()));
+    socket.broadcast.emit(
+      "currentOnlinePeers",
+      Array.from(onlineUsers.values()),
+    );
   });
 
   socket.on("userCameOffline", (data) => {

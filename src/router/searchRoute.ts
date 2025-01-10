@@ -39,7 +39,7 @@ router.get("/:id", async (req: Request, res: Response) => {
         return;
 
       case "chats":
-        const chatScope = await QueryConversation(db, userId);
+        const chatScope = await QueryConversation(db, userId, "all");
 
         res
           .status(200)
@@ -47,7 +47,10 @@ router.get("/:id", async (req: Request, res: Response) => {
         return;
 
       case "groups":
-        res.status(200).json({ ok: 1, users: [], chats: [], group: [] });
+        const groupScope = await QueryConversation(db, userId, "group");
+        res
+          .status(200)
+          .json({ ok: 1, users: [], chats: [], group: groupScope });
         return;
       default: // all
         const PeopleAllScope = await QueryUsers(
@@ -65,7 +68,7 @@ router.get("/:id", async (req: Request, res: Response) => {
                 userId,
                 searchTerms: searchTerms.join(" "),
               })
-            : await QueryConversation(db, userId);
+            : await QueryConversation(db, userId, "all");
         const GroupAllScope = [];
         res.status(200).json({
           ok: 1,

@@ -272,15 +272,30 @@ const getGroupConversationId = async ({
   }
 };
 
-export const QueryConversation = async (db: PoolClient, userId: string) => {
+export const QueryConversation = async (
+  db: PoolClient,
+  userId: string,
+  conversationType: "all" | "group",
+) => {
   // fetch the convo that user participate
   const convoParticipantQuery = `
   SELECT cp.conversation_id FROM conversation_participants cp
-  WHERE user_id = $1 ;
+  WHERE user_id = $1 ${
+    conversationType === "group" ? "AND conversation_type = $2" : ""
+  } ;
+
   `;
-  const convoParticipantsQueryResponse = await db.query(convoParticipantQuery, [
-    userId,
-  ]);
+  let convoParticipantsQueryResponse;
+  if (conversationType === "all")
+    convoParticipantsQueryResponse = await db.query(convoParticipantQuery, [
+      userId,
+    ]);
+  else {
+    convoParticipantsQueryResponse = await db.query(convoParticipantQuery, [
+      userId,
+      conversationType,
+    ]);
+  }
   if (
     !convoParticipantsQueryResponse ||
     !convoParticipantsQueryResponse.rows.length
